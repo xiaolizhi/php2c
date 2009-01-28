@@ -1,0 +1,34 @@
+PHP to C converter
+~~~~~~~~~~~~~~~~~~
+
+PHP2C is a PHP to C converter that can be used to improve your
+productivity when writing more complicated PHP extensions in C. With
+PHP2C you can simply describe classes, interfaces and global functions
+in PHP language and PHP2C will generate skeleton of your new PHP
+extension.
+
+PHP2C supports classes, interfaces, methods, functions, properties,
+default values and also prefills the implementations of functions and
+methods with some basic parameter parsing and checking.
+
+The code is fairly complete and useful.
+
+Installation/use:
+
+- Extract
+- Explore
+- Run test.sh
+- Write the extension interface in PHP
+- And then do the real hard stuff instead of wasting your time writing
+  boilerplate code.
+
+How you can help to improve the application:
+
+- Feel free to create branches in the project's repository on GITHUB or send me
+  patches or pull requests for your changes.
+  
+  The repository can be found here: http://github.com/megous/php2c/tree
+
+License: Public Domain
+
+  ~ Ondřej Jirman <megous@megous.com>, 2009
