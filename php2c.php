@@ -181,15 +181,17 @@ class PHP2C
           $c[] = "  }";
           $c[] = "";
         }
-        $max_param_count = $method->getNumberOfParameters();
-        $c[] = "  if (ZEND_NUM_ARGS() > $max_param_count)";
-        $c[] = "    ZEND_WRONG_PARAM_COUNT();";
-        $c[] = "";
         if (!empty($zp_fmt))
         {
           $c[] = "  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, \"".implode("", $zp_fmt)."\", ".implode(", ", $zp_args).") == FAILURE)";
           $c[] = "    return;";
           $c[] = "";
+        } else {
+
+            $c[] = "  if (zend_parse_parameters_none() == FAILURE) {";
+            $c[] = "    return;";
+            $c[] = "  }";
+            $c[] = "";
         }
 
         $c[] = "  char* space;";
@@ -226,8 +228,9 @@ class PHP2C
       foreach ($class->getMethods() as $method)
       {
         $ainame = "arginfo_".$this->get_class_cname($class)."_".$method->getName();
-
-        $c[] = "static";
+        if (version_compare( PHP_VERSION, '5.3.0', '<')) {
+            $c[] = "static";
+        }
         $c[] = "ZEND_BEGIN_ARG_INFO_EX({$ainame}, 0, ".($method->returnsReference() ? 1 : 0).", ".($method->getNumberOfRequiredParameters()).")";
         foreach ($method->getParameters() as $param)
         {
