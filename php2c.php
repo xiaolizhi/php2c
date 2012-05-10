@@ -18,14 +18,14 @@ class PHP2C
   {
     $classes = get_declared_classes();
     $interfaces = get_declared_interfaces();
-    $functions = get_defined_functions();
+    $functions = get_defined_functions()['user'];
     $constants = get_defined_constants();
 
     require_once $source;
 
     $this->classes = array_diff(get_declared_classes(), $classes);
     $this->interfaces = array_diff(get_declared_interfaces(), $interfaces);
-    $this->functions = array_diff(get_defined_functions(), $functions);
+    $this->functions = array_diff(get_defined_functions()['user'], $functions);
     $this->constants = array_diff(get_defined_constants(), $constants);
   }
 
@@ -66,6 +66,8 @@ class PHP2C
     $h[] = "";
     $h[] = "#include \"php.h\"";
     $h[] = "";
+    $h[] = "#define _S(str) str, sizeof(str) - 1";
+    $h[] = "";
     $h[] = "extern zend_module_entry {$this->extname}_module_entry;";
     $h[] = "#define phpext_{$this->extname}_ptr &{$this->extname}_module_entry";
     $h[] = "";
@@ -98,6 +100,7 @@ class PHP2C
     $c[] = "";
     $c[] = "/* }}} */";
     $c[] = "/* {{{ Class entry pointers */";
+    $c[] = "";
     foreach ($this->get_classes() as $class)
       $c[] = "PHPAPI zend_class_entry *".$this->get_class_cname($class)."_ptr;";
     $c[] = "";
@@ -194,7 +197,7 @@ class PHP2C
             $c[] = "";
         }
 
-        $c[] = "  char* space;";
+        $c[] = "  const char* space;";
         $c[] = "  php_printf(\"method %s::%s was called\\n\", get_active_class_name(&space TSRMLS_CC), get_active_function_name(TSRMLS_CC));";
         foreach ($method->getParameters() as $param)
         {
@@ -227,10 +230,10 @@ class PHP2C
       /* generate arginfos */
       foreach ($class->getMethods() as $method)
       {
-        $ainame = "arginfo_".$this->get_class_cname($class)."_".$method->getName();
-        if (version_compare( PHP_VERSION, '5.3.0', '<')) {
+        $ainame = "ai_".$this->get_class_cname($class)."_".$method->getName();
+        if (version_compare( PHP_VERSION, '5.3.0', '<'))
             $c[] = "static";
-        }
+
         $c[] = "ZEND_BEGIN_ARG_INFO_EX({$ainame}, 0, ".($method->returnsReference() ? 1 : 0).", ".($method->getNumberOfRequiredParameters()).")";
         foreach ($method->getParameters() as $param)
         {
@@ -252,7 +255,7 @@ class PHP2C
       $c[] = "static zend_function_entry ".$this->get_class_cname($class)."_functions[] = {";
       foreach ($class->getMethods() as $method)
       {
-        $ainame = "arginfo_".$this->get_class_cname($class)."_".$method->getName();
+        $ainame = "ai_".$this->get_class_cname($class)."_".$method->getName();
         $flags = array();
         if ($method->isStatic())
           $flags[] = "ZEND_ACC_STATIC";
@@ -269,11 +272,11 @@ class PHP2C
         $flags = empty($flags) ? "0" : implode("|", $flags);
 
         if ($class->isInterface())
-          $c[] = sprintf("  ZEND_ABSTRACT_ME(%-20s %-30s %s)", $class->getName().",", $method->getName().",", $ainame);
+          $c[] = sprintf("  ZEND_ABSTRACT_ME(%s %s %s)", $class->getName().",", $method->getName().",", $ainame);
         else
-          $c[] = sprintf("  ZEND_ME(%-20s %-30s %-50s %s)", $class->getName().",", $method->getName().",", $ainame.",", $flags);
+          $c[] = sprintf("  ZEND_ME(%s %s %s %s)", $class->getName().",", $method->getName().",", $ainame.",", $flags);
       }
-      $c[] = "  {NULL, NULL, NULL}";
+      $c[] = "  ZEND_FE_END";
       $c[] = "};";
       $c[] = "";
     }
@@ -284,9 +287,9 @@ class PHP2C
     /* generate arginfos */
     foreach ($this->get_functions() as $func)
     {
-      $ainame = "arginfo_".$func->getName();
-
-      $c[] = "static";
+      $ainame = "ai_".$func->getName();
+      if (version_compare( PHP_VERSION, '5.3.0', '<'))
+          $c[] = "static";
       $c[] = "ZEND_BEGIN_ARG_INFO_EX({$ainame}, 0, ".($func->returnsReference() ? 1 : 0).", ".($func->getNumberOfRequiredParameters()).")";
       foreach ($func->getParameters() as $param)
       {
@@ -308,8 +311,8 @@ class PHP2C
     $c[] = "static zend_function_entry {$this->extname}_functions[] = {";
     foreach ($this->get_functions() as $func)
     {
-      $ainame = "arginfo_".$func->getName();
-      $c[] = sprintf("  ZEND_FE(%-30s %s)", $func->getName().",", $ainame);
+      $ainame = "ai_".$func->getName();
+      $c[] = sprintf("  ZEND_FE(%s %s)", $func->getName().",", $ainame);
     }
     $c[] = "  {NULL, NULL, NULL}";
     $c[] = "};";
@@ -372,22 +375,22 @@ class PHP2C
           $value = $defaults[$name];
 
           if (is_int($value))
-            $c[] = "  zend_declare_property_long($class_ptr, \"$name\", sizeof(\"$name\")-1, $value, $flags TSRMLS_CC);";
+            $c[] = "  zend_declare_property_long($class_ptr, _S(\"$name\"), $value, $flags TSRMLS_CC);";
           else if (is_null($value))
-            $c[] = "  zend_declare_property_null($class_ptr, \"$name\", sizeof(\"$name\")-1, $flags TSRMLS_CC);";
+            $c[] = "  zend_declare_property_null($class_ptr, _S(\"$name\"), $flags TSRMLS_CC);";
           else if (is_bool($value))
-            $c[] = "  zend_declare_property_bool($class_ptr, \"$name\", sizeof(\"$name\")-1, ".($value ? 1 : 0).", $flags TSRMLS_CC);";
+            $c[] = "  zend_declare_property_bool($class_ptr, _S(\"$name\"), ".($value ? 1 : 0).", $flags TSRMLS_CC);";
           else if (is_float($value))
-            $c[] = "  zend_declare_property_double($class_ptr, \"$name\", sizeof(\"$name\")-1, $value, $flags TSRMLS_CC);";
+            $c[] = "  zend_declare_property_double($class_ptr, _S(\"$name\"), $value, $flags TSRMLS_CC);";
           else if (is_string($value))
-            $c[] = "  zend_declare_property_string($class_ptr, \"$name\", sizeof(\"$name\")-1, \"".addcslashes($value, "\0..\37!@\177..\377")."\", $flags TSRMLS_CC);";
+            $c[] = "  zend_declare_property_string($class_ptr, _S(\"$name\"), \"".addcslashes($value, "\0..\37!@\177..\377")."\", $flags TSRMLS_CC);";
           /*
           else if (is_array($value))
           {
             if (!empty($value))
               echo "unsupported non-empty array property type: $name\n";
             $c[] = "  MAKE_STD_ZVAL(_val); array_init(_val);";
-            $c[] = "  zend_declare_property($class_ptr, \"$name\", sizeof(\"$name\")-1, _val, $flags TSRMLS_CC);";
+            $c[] = "  zend_declare_property($class_ptr, _S(\"$name\"), _val, $flags TSRMLS_CC);";
           } */
           else
             echo "unsupported property type: $name\n";
@@ -396,15 +399,15 @@ class PHP2C
       foreach ($class->getConstants() as $name => $value)
       {
         if (is_int($value))
-          $c[] = "  zend_declare_class_constant_long($class_ptr, \"$name\", sizeof(\"$name\")-1, $value TSRMLS_CC);";
+          $c[] = "  zend_declare_class_constant_long($class_ptr, _S(\"$name\"), $value TSRMLS_CC);";
         else if (is_null($value))
-          $c[] = "  zend_declare_class_constant_null($class_ptr, \"$name\", sizeof(\"$name\")-1 TSRMLS_CC);";
+          $c[] = "  zend_declare_class_constant_null($class_ptr, _S(\"$name\") TSRMLS_CC);";
         else if (is_bool($value))
-          $c[] = "  zend_declare_class_constant_bool($class_ptr, \"$name\", sizeof(\"$name\")-1, ".($value ? 1 : 0)." TSRMLS_CC);";
+          $c[] = "  zend_declare_class_constant_bool($class_ptr, _S(\"$name\"), ".($value ? 1 : 0)." TSRMLS_CC);";
         else if (is_float($value))
-          $c[] = "  zend_declare_class_constant_double($class_ptr, \"$name\", sizeof(\"$name\")-1, $value TSRMLS_CC);";
+          $c[] = "  zend_declare_class_constant_double($class_ptr, _S(\"$name\"), $value TSRMLS_CC);";
         else if (is_string($value))
-          $c[] = "  zend_declare_class_constant_string($class_ptr, \"$name\", sizeof(\"$name\")-1, \"".addcslashes($value, "\0..\37!@\177..\377")."\" TSRMLS_CC);";
+          $c[] = "  zend_declare_class_constant_string($class_ptr, _S(\"$name\"), \"".addcslashes($value, "\0..\37!@\177..\377")."\" TSRMLS_CC);";
         else
           echo "unsupported constant type: $name\n";
       }
@@ -443,6 +446,7 @@ class PHP2C
     $c[] = "#ifdef COMPILE_DL_".strtoupper($this->extname);
     $c[] = "ZEND_GET_MODULE({$this->extname})";
     $c[] = "#endif";
+    $c[] = "";
     $c[] = "/* }}} */";
 
     file_put_contents($hfile, implode("\n", $h)."\n");

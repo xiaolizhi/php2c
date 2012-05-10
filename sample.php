@@ -22,7 +22,7 @@ class base_test
   public $float = 1.157;
   public static $sname = 1;
 
-  public function __construct($name)
+  public function __construct(basics $name)
   {
   }
 
@@ -41,7 +41,7 @@ class base_test
 
 class test extends base_test implements basics
 {
-  public function method2($param1)
+  public function method2($param1, $param2 = null)
   {
   }
 }
