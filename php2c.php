@@ -1,9 +1,10 @@
 <?php
 /*
  * Author: Ondřej Jirman <megous@megous.com>, 2009
- * This codee was released to Public Domain.
+ * Revised: Xiao Lizhi <xiaolizhimain@163.com>, 2015
+ * This code was released to Public Domain.
  */
-
+ 
 class PHP2C
 {
   public $extname = "";
@@ -448,23 +449,42 @@ class PHP2C
     $c[] = "#endif";
     $c[] = "";
     $c[] = "/* }}} */";
-
-    file_put_contents($hfile, implode("\n", $h)."\n");
-    file_put_contents($cfile, implode("\n", $c)."\n");
+    
+    mkdir("project");
+    file_put_contents("project/$hfile", implode("\n", $h)."\n");
+    file_put_contents("project/$cfile", implode("\n", $c)."\n");
 
     $len = $this->extname;
     $uen = strtoupper($this->extname);
-    file_put_contents("config.m4", "PHP_ARG_ENABLE($len, [whether to enable $len support],
+    file_put_contents("project/config.m4", "PHP_ARG_ENABLE($len, [whether to enable $len support],
 [  --enable-$len          Enable $len support])
 
 if test \"\$PHP_$uen\" = \"yes\"; then
   PHP_NEW_EXTENSION($len, $cfile,\$ext_shared,,\$P2C_CFLAGS)
 fi
 ");
+    file_put_contents("project/config.w32", "ARG_ENABLE(\"$len\", \"enable $len support\", \"no\");
+if (PHP_$uen != \"no\") {
+    EXTENSION(\"$len\", \"$cfile\");
+}");
   }
 }
 
-$compiler = new PHP2C('sample', 'sample.php');
-$compiler->generate('php_sample.h', 'php_sample.c');
+$extname = "";
+$phpfile = "";
+foreach ($argv as $arg)
+{
+    if (false !== stripos($arg, "--extname="))
+        $extname = trim(substr($arg, strlen("--extname=")));
+    elseif (false !== stripos($arg, "--phpfile="))
+        $phpfile = trim(substr($arg, strlen("--phpfile=")));
+}
+if (!isset($extname[0]) || !isset($phpfile[0]))
+{
+    echo "Usage:\nphp php2c.php --extname=extname --phpfile=phpfile";
+    exit(1);
+}
 
+$compiler = new PHP2C($extname, $phpfile);
+$compiler->generate("php_$extname.h", "php_$extname.c");
 ?>
