@@ -1,8 +1,6 @@
 PHP to C converter
 ~~~~~~~~~~~~~~~~~~
-forked from https://github.com/megous/php2c
 
-~~~~~~~~~~~~~~~~~~
 HOW TO TEST:
 ./test.sh
 
@@ -11,5 +9,5 @@ add directory of php2c.php to PATH
 php php2c.php --extname=EXTENSION_NAME --phpfile=PHP_FILE_NAME
 you can find the generated directory project and code files in the directory
 
-ABOUT "undefined symbol: zend_new_interned_string"
+ABOUT "undefined symbol: zend_new_interned_string":
 remove preprocessor definition LIBZEND_EXPORTS
