@@ -105,9 +105,6 @@ class PHP2C
     foreach ($this->get_classes() as $class)
       $c[] = "PHPAPI zend_class_entry *".$this->get_class_cname($class)."_ptr;";
     $c[] = "";
-    $zval_null = strtoupper($this->extname). "_ZVAL_NULL";
-    $c[] = "zval $zval_null={};";
-    $c[] = "";
     $c[] = "static zend_class_entry* _find_class(char* name TSRMLS_DC)";
     $c[] = "{";
     $c[] = "  zend_class_entry **pce = NULL;";
@@ -160,7 +157,7 @@ class PHP2C
             $zp_fmt[] = "O";
             $zp_args[] = "&".$pname;
             $zp_args[] = "_find_class(\"" . $param->getClass()->getName() . "\" TSRMLS_CC)";
-            $zp_defs[] = "zval* ".$pname."=&$zval_null";
+            $zp_defs[] = "zval* ".$pname."=NULL";
           }
           elseif ($param->isArray())
           {
@@ -168,7 +165,7 @@ class PHP2C
                 $zp_fmt[] = "|";
             $zp_fmt[] = "a";
             $zp_args[] = "&".$pname;
-            $zp_defs[] = "zval* ".$pname."=&$zval_null";
+            $zp_defs[] = "zval* ".$pname."=NULL";
           }
           elseif ($param->isVariadic())
           {
@@ -187,7 +184,7 @@ class PHP2C
                 $zp_fmt[] = "|";
             $zp_fmt[] = "z";
             $zp_args[] = "&".$pname;
-            $zp_defs[] = "zval* ".$pname."=&$zval_null";
+            $zp_defs[] = "zval* ".$pname."=NULL";
             /*
             $zp_fmt[] = "s";
             $zp_args[] = "&".$pname."=NULL";
@@ -225,12 +222,20 @@ class PHP2C
 
         $c[] = "  const char* space=NULL;";
         $c[] = "  php_printf(\"method %s::%s was called\\n\", get_active_class_name(&space TSRMLS_CC), get_active_function_name(TSRMLS_CC));";
-        foreach ($method->getParameters() as $param)
+        foreach ($method->getParameters() as $index => $param)
         {
           $pname = "a_".$param->getName();
           if (!$param->isVariadic())
-          {            
-            $c[] = "  php_var_dump(&$pname, 1 TSRMLS_CC);";
+          {
+            if ($index >= $zp_requied_arg_cnt)
+            {
+                $c[] = "  if ($pname)";
+                $c[] = "    php_var_dump(&$pname, 1 TSRMLS_CC);";
+            }
+            else
+            {
+                $c[] = "  php_var_dump(&$pname, 1 TSRMLS_CC);";
+            }
           }
           else
           {
@@ -287,7 +292,7 @@ class PHP2C
             $zp_fmt[] = "O";
             $zp_args[] = "&".$pname;
             $zp_args[] = "_find_class(\"" . $param->getClass()->getName() . "\" TSRMLS_CC)";
-            $zp_defs[] = "zval* ".$pname."=&$zval_null";
+            $zp_defs[] = "zval* ".$pname."=NULL";
           }
           elseif ($param->isArray())
           {
@@ -295,7 +300,7 @@ class PHP2C
                 $zp_fmt[] = "|";
             $zp_fmt[] = "a";
             $zp_args[] = "&".$pname;
-            $zp_defs[] = "zval* ".$pname."=&$zval_null";
+            $zp_defs[] = "zval* ".$pname."=NULL";
           }
           elseif ($param->isVariadic())
           {
@@ -314,7 +319,7 @@ class PHP2C
                 $zp_fmt[] = "|";
             $zp_fmt[] = "z";
             $zp_args[] = "&".$pname;
-            $zp_defs[] = "zval* ".$pname."=&$zval_null";
+            $zp_defs[] = "zval* ".$pname."=NULL";
             /*
             $zp_fmt[] = "s";
             $zp_args[] = "&".$pname."=NULL";
@@ -342,12 +347,20 @@ class PHP2C
         }
 
         $c[] = "  php_printf(\"function %s was called\\n\", get_active_function_name(TSRMLS_CC));";
-        foreach ($func->getParameters() as $param)
+        foreach ($func->getParameters() as $index => $param)
         {
           $pname = "a_".$param->getName();
           if (!$param->isVariadic())
           {
-            $c[] = "  php_var_dump(&$pname, 1 TSRMLS_CC);";
+            if ($index >= $zp_requied_arg_cnt)
+            {
+                $c[] = "  if ($pname)";
+                $c[] = "    php_var_dump(&$pname, 1 TSRMLS_CC);";
+            }
+            else
+            {
+                $c[] = "  php_var_dump(&$pname, 1 TSRMLS_CC);";
+            }
           }
           else
           {
