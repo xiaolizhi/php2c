@@ -1,7 +1,8 @@
 <?php
 /*
  * Author: Ondřej Jirman <megous@megous.com>, 2009
- * This codee was released to Public Domain.
+ * Revised: Xiao Lizhi <xiaolizhimain@163.com>, 2015
+ * This code was released to Public Domain.
  */
 
 class test2 extends base_test implements basics
